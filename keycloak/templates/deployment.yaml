@@ -1,0 +1,95 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "keycloak.fullname" . }}
+  namespace: {{ .Values.namespace }}
+  labels:
+    app: keycloak
+spec:
+  {{- if not .Values.autoscaling.enabled }}
+  replicas: {{ .Values.replicaCount }}
+  {{- end }}
+  selector:
+    matchLabels:
+      app: keycloak
+  template:
+    metadata:
+      {{- with .Values.podAnnotations }}
+      annotations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      labels:
+        app: keycloak
+    spec:
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      serviceAccountName: {{ include "keycloak.serviceAccountName" . }}
+      securityContext:
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      containers:
+        - name: keycloak
+          securityContext:
+            {{- toYaml .Values.securityContext | nindent 12 }}
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          volumeMounts:
+            - mountPath: "/etc/certificate"
+              name: keycloak-volume
+              readOnly: true
+          args: {{ .Values.args }}
+          env:
+          - name: KEYCLOAK_ADMIN
+            valueFrom:
+              secretKeyRef:
+                name: keycloakcred
+                key: keycloak-admin-username       
+          - name: KEYCLOAK_ADMIN_PASSWORD
+            valueFrom:
+              secretKeyRef:
+                name: keycloakcred
+                key: keycloak-admin-password
+          - name: KC_PROXY
+            value: "edge"
+          - name: KC_DB
+            value: 'mysql'
+          - name: KC_DB_USERNAME
+            value: user1
+          - name: KC_DB_PASSWORD
+            value: Welcome@123
+          - name: KC_DB_URL
+            value: 'jdbc:mysql://192.168.0.220:3306/keycloakchai'
+          - name: KC_DB_POOL_MAX_SIZE
+            value: "100"
+          - name: KC_HOSTNAME_STRICT
+            value: '"true"'
+          - name: KC_LOG_CONSOLE_COLOR
+            value: 'true'
+          - name: KC_HTTPS_CERTIFICATE_FILE
+            value: /etc/certificate/tls.crt
+          - name: KC_HTTPS_CERTIFICATE_KEY_FILE
+            value: /etc/certificate/tls.key
+          ports:
+          - name: http
+            containerPort: 8080
+          - name: https
+            containerPort: 8443
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      volumes:
+      - name: keycloak-volume
+        secret:
+          secretName: keycloak-volume
