@@ -6,7 +6,7 @@ echo "$(cat kubectl.sha256) kubectl" | sha256sum --check;
 
 sudo install -o root -g root -m 0755 kubectl /usr/local/bin/kubectl -y;
 
-kubectl version --client;"'
+kubectl version --client;"';
 
 sshpass -p Welcome1 ssh -o StrictHostKeyChecking=no root@192.168.0.210 $script0;
 
